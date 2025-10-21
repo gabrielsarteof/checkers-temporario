@@ -38,7 +38,7 @@ except ImportError:
     print("[AVISO] Sarte evaluator não disponível")
     
 try:
-    from evaluators.openingbook_evaluator import OpeningBookEvaluator
+    from evaluators.openingbook_evaluator import MeninasSuperPoderosasEvaluator
     OPENINGBOOK_AVAILABLE = True
 except ImportError:
     OPENINGBOOK_AVAILABLE = False
@@ -59,7 +59,7 @@ if MENINAS_SUPERPODEROSAS_AVAILABLE:
 if SARTE_AVAILABLE:
     EVALUATOR_REGISTRY["Sarte"] = AdvancedEvaluatorSarte
 if OPENINGBOOK_AVAILABLE:
-    EVALUATOR_REGISTRY["Opening Book"] = OpeningBookEvaluator
+    EVALUATOR_REGISTRY["Opening Book"] = MeninasSuperPoderosasEvaluator
 
 
 # ============================================================================
