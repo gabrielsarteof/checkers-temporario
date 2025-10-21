@@ -14,7 +14,6 @@ from ui.difficulty_selector import DifficultySelector
 from ui.evaluator_selector import EvaluatorSelector
 from ui.control_panel import ControlPanel
 from ui.status_panel import StatusPanel
-from ui.scrollable_panel import ScrollablePanel
 import evaluators
 
 
@@ -49,8 +48,8 @@ class CheckersWindow:
         # Largura dos botões: do x=20 até 20px antes do tabuleiro (que está em x=260)
         button_width = BoardConfig.BOARD_X - 20 - left_column_x  # 260 - 20 - 20 = 220
 
-        # Alinhar com a borda superior do tabuleiro
-        selector_y_start = BoardConfig.BOARD_Y
+        # Começar do topo da janela (com pequena margem de 20px)
+        selector_y_start = 20
 
         # Criar componentes com suas posições originais
         self.mode_selector = ModeSelector(
@@ -68,7 +67,7 @@ class CheckersWindow:
             on_difficulty_change=self._on_difficulty_change
         )
 
-        num_evaluators = len(evaluators.get_evaluator_names())
+        # Dropdown ocupa apenas 1 botão de altura (não todos os avaliadores)
         evaluator_y = difficulty_y + 3 * UIElementConfig.SELECTOR_BUTTON_HEIGHT + 30
         self.red_evaluator_selector = EvaluatorSelector(
             x=left_column_x,
@@ -79,17 +78,19 @@ class CheckersWindow:
             default_evaluator=evaluators.get_default_evaluator_name()
         )
 
-        black_evaluator_y = evaluator_y + num_evaluators * UIElementConfig.SELECTOR_BUTTON_HEIGHT + 30
+        # Espaçar apenas 1 altura de botão + margem (dropdown é compacto agora)
+        black_evaluator_y = evaluator_y + UIElementConfig.SELECTOR_BUTTON_HEIGHT + 30
         self.black_evaluator_selector = EvaluatorSelector(
             x=left_column_x,
             y=black_evaluator_y,
             width=button_width,
             title="AVALIADOR BLACK",
             on_evaluator_change=self._on_black_evaluator_change,
-            default_evaluator="Meninas Superpoderosas"
+            default_evaluator=None  # Usa o avaliador padrão
         )
 
-        control_y = black_evaluator_y + num_evaluators * UIElementConfig.SELECTOR_BUTTON_HEIGHT + 30
+        # Controles logo abaixo do segundo dropdown (apenas 1 altura de botão)
+        control_y = black_evaluator_y + UIElementConfig.SELECTOR_BUTTON_HEIGHT + 30
         self.control_panel = ControlPanel(
             x=left_column_x,
             y=control_y,
@@ -97,61 +98,13 @@ class CheckersWindow:
             on_reset=self._on_reset_clicked
         )
 
-        status_y = control_y + self.control_panel.panel_height + 30
+        # Status logo abaixo do controle (espaçamento padronizado)
+        status_y = control_y + UIElementConfig.SELECTOR_BUTTON_HEIGHT + 30
         self.status_panel = StatusPanel(
             x=left_column_x,
             y=status_y,
             width=button_width,
             game_manager=self.game_manager
-        )
-
-        # Criar painel rolável para os componentes do menu lateral
-        # Altura disponível: da posição inicial até o final da janela
-        panel_height = WindowConfig.HEIGHT - selector_y_start - 10
-        self.scrollable_panel = ScrollablePanel(
-            x=left_column_x,
-            y=selector_y_start,
-            width=button_width,
-            height=panel_height,
-            scroll_speed=30
-        )
-
-        # Adicionar componentes ao painel rolável
-        self.scrollable_panel.add_component(
-            self.mode_selector,
-            lambda surface: self.mode_selector.render(surface),
-            lambda mouse_pos: self.mode_selector.update(mouse_pos),
-            lambda event: self.mode_selector.handle_event(event)
-        )
-        self.scrollable_panel.add_component(
-            self.difficulty_selector,
-            lambda surface: self.difficulty_selector.render(surface),
-            lambda mouse_pos: self.difficulty_selector.update(mouse_pos),
-            lambda event: self.difficulty_selector.handle_event(event)
-        )
-        self.scrollable_panel.add_component(
-            self.red_evaluator_selector,
-            lambda surface: self.red_evaluator_selector.render(surface),
-            lambda mouse_pos: self.red_evaluator_selector.update(mouse_pos),
-            lambda event: self.red_evaluator_selector.handle_event(event)
-        )
-        self.scrollable_panel.add_component(
-            self.black_evaluator_selector,
-            lambda surface: self.black_evaluator_selector.render(surface),
-            lambda mouse_pos: self.black_evaluator_selector.update(mouse_pos),
-            lambda event: self.black_evaluator_selector.handle_event(event)
-        )
-        self.scrollable_panel.add_component(
-            self.control_panel,
-            lambda surface: self.control_panel.render(surface),
-            lambda mouse_pos: self.control_panel.update(mouse_pos),
-            lambda event: self.control_panel.handle_event(event)
-        )
-        self.scrollable_panel.add_component(
-            self.status_panel,
-            lambda surface: self.status_panel.render(surface),
-            lambda mouse_pos: self.status_panel.update(mouse_pos),
-            lambda event: self.status_panel.handle_event(event)
         )
 
     def _on_mode_change(self, mode: GameMode) -> None:
@@ -252,8 +205,13 @@ class CheckersWindow:
             if event.type == pygame.QUIT:
                 self.running = False
 
-            # Processar eventos do painel rolável
-            self.scrollable_panel.handle_event(event)
+            # Processar eventos dos componentes UI
+            self.mode_selector.handle_event(event)
+            self.difficulty_selector.handle_event(event)
+            self.red_evaluator_selector.handle_event(event)
+            self.black_evaluator_selector.handle_event(event)
+            self.control_panel.handle_event(event)
+            self.status_panel.handle_event(event)
 
             # Processar cliques no tabuleiro
             self._handle_board_click(event)
@@ -266,8 +224,13 @@ class CheckersWindow:
         # Atualizar gerenciador de estado (processa IA se necessário)
         self.game_manager.update(current_time)
 
-        # Atualizar painel rolável
-        self.scrollable_panel.update(mouse_pos)
+        # Atualizar componentes UI
+        self.mode_selector.update(mouse_pos)
+        self.difficulty_selector.update(mouse_pos)
+        self.red_evaluator_selector.update(mouse_pos)
+        self.black_evaluator_selector.update(mouse_pos)
+        self.control_panel.update(mouse_pos)
+        self.status_panel.update(mouse_pos)
 
     def render(self) -> None:
         """Renderiza todos os elementos na tela."""
@@ -284,12 +247,22 @@ class CheckersWindow:
         # Renderizar peças
         self.piece_renderer.render_all_pieces(self.game_manager.board)
 
-        # Renderizar painel rolável com componentes UI
-        self.scrollable_panel.render(self.screen)
+        # Renderizar componentes UI (caixas principais)
+        self.mode_selector.render(self.screen)
+        self.difficulty_selector.render(self.screen)
+        self.red_evaluator_selector.render(self.screen)
+        self.black_evaluator_selector.render(self.screen)
+        self.control_panel.render(self.screen)
+        self.status_panel.render(self.screen)
 
         # Renderizar mensagem se IA estiver pensando
         if self.game_manager.is_ai_thinking:
             self._render_thinking_message()
+
+        # Renderizar dropdowns expandidos POR ÚLTIMO para que flutuem sobre tudo
+        # (isso garante que as listas expandidas apareçam sobre outros elementos)
+        self.red_evaluator_selector.render_expanded(self.screen)
+        self.black_evaluator_selector.render_expanded(self.screen)
 
         # Atualizar tela
         pygame.display.flip()

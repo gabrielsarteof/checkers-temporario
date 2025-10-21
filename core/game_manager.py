@@ -49,7 +49,7 @@ class GameManager:
 
         # Usar avaliadores padrão se não especificados
         self.red_evaluator_name = red_evaluator_name or evaluators.get_default_evaluator_name()
-        self.black_evaluator_name = black_evaluator_name or "Meninas Superpoderosas"
+        self.black_evaluator_name = black_evaluator_name or evaluators.get_default_evaluator_name()
 
         self.board = BoardState.create_initial_state()
         self.current_player = PlayerColor.RED  # Vermelho sempre começa

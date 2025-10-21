@@ -1,10 +1,10 @@
 """Seletor de tipo de avaliador da IA."""
 
 import pygame
-from typing import Callable, List
+from typing import Callable
 from config import ColorsConfig, UIElementConfig
 from core.enums import GameMode
-from .button import Button
+from .dropdown import Dropdown
 import evaluators
 
 
@@ -12,6 +12,7 @@ class EvaluatorSelector:
     """
     Seletor de avaliador dinâmico que lista todos os avaliadores disponíveis.
 
+    Usa uma caixa de seleção (dropdown) para economizar espaço e melhorar a UX.
     Visível apenas quando há IA no jogo.
     """
 
@@ -30,7 +31,7 @@ class EvaluatorSelector:
         Args:
             x: Posição X do seletor
             y: Posição Y do seletor
-            width: Largura dos botões
+            width: Largura do dropdown
             title: Título do seletor (ex: "AVALIADOR RED", "AVALIADOR BLACK")
             on_evaluator_change: Callback quando avaliador é alterado (recebe nome do avaliador)
             default_evaluator: Nome do avaliador padrão
@@ -51,53 +52,30 @@ class EvaluatorSelector:
         else:
             self.current_evaluator = evaluators.get_default_evaluator_name()
 
-        # Criar botões para cada avaliador em layout vertical
-        self.buttons: List[Button] = []
-        self._create_buttons()
+        # Criar dropdown para seleção de avaliador
+        # Dropdown fica abaixo do título (título usa 20px de espaço acima)
+        dropdown_y = self.y
+        self.dropdown = Dropdown(
+            x=self.x,
+            y=dropdown_y,
+            width=self.width,
+            height=UIElementConfig.SELECTOR_BUTTON_HEIGHT,
+            options=self.evaluator_names,
+            default_option=self.current_evaluator,
+            on_change=self._on_dropdown_change,
+            font_size=UIElementConfig.SELECTOR_FONT_SIZE
+        )
 
-    def _create_buttons(self) -> None:
-        """Cria botões para todos os avaliadores disponíveis."""
-        self.buttons.clear()
-
-        for i, evaluator_name in enumerate(self.evaluator_names):
-            button_y = self.y + i * UIElementConfig.SELECTOR_BUTTON_HEIGHT
-            button = Button(
-                x=self.x,
-                y=button_y,
-                width=self.width,
-                height=UIElementConfig.SELECTOR_BUTTON_HEIGHT,
-                text=evaluator_name,
-                callback=lambda e=evaluator_name: self._on_button_click(e),
-                font_size=UIElementConfig.SELECTOR_FONT_SIZE
-            )
-            self.buttons.append(button)
-
-        # Marcar botão inicial como selecionado
-        self._update_button_states()
-
-    def _on_button_click(self, evaluator_name: str) -> None:
+    def _on_dropdown_change(self, evaluator_name: str) -> None:
         """
-        Callback quando um botão é clicado.
+        Callback quando uma opção do dropdown é selecionada.
 
         Args:
             evaluator_name: Nome do avaliador selecionado
         """
         if evaluator_name != self.current_evaluator:
             self.current_evaluator = evaluator_name
-            self._update_button_states()
             self.on_evaluator_change(evaluator_name)
-
-    def _update_button_states(self) -> None:
-        """Atualiza estado visual dos botões."""
-        for i, evaluator_name in enumerate(self.evaluator_names):
-            # Botão selecionado tem cor diferente
-            is_selected = (evaluator_name == self.current_evaluator)
-            if is_selected:
-                self.buttons[i].normal_color = ColorsConfig.BUTTON_SELECTED
-                self.buttons[i].hover_color = ColorsConfig.BUTTON_SELECTED
-            else:
-                self.buttons[i].normal_color = ColorsConfig.BUTTON_NORMAL
-                self.buttons[i].hover_color = ColorsConfig.BUTTON_HOVER
 
     def set_visible(self, visible: bool) -> None:
         """
@@ -119,7 +97,10 @@ class EvaluatorSelector:
 
     def render(self, screen: pygame.Surface) -> None:
         """
-        Renderiza o seletor.
+        Renderiza o seletor (apenas caixa principal do dropdown).
+
+        IMPORTANTE: A parte expandida do dropdown é renderizada separadamente
+        via render_expanded() para garantir que flutue sobre outros elementos.
 
         Args:
             screen: Superfície para renderização
@@ -135,9 +116,24 @@ class EvaluatorSelector:
         )
         screen.blit(title_surface, title_rect)
 
-        # Renderizar botões
-        for button in self.buttons:
-            button.render(screen)
+        # Renderizar apenas a caixa principal do dropdown
+        self.dropdown.render(screen)
+
+    def render_expanded(self, screen: pygame.Surface) -> None:
+        """
+        Renderiza a parte expandida do dropdown (se estiver expandido).
+
+        Este método deve ser chamado por ÚLTIMO no ciclo de renderização
+        para garantir que flutue sobre todos os outros elementos.
+
+        Args:
+            screen: Superfície para renderização
+        """
+        if not self.visible:
+            return
+
+        # Renderizar a lista expandida do dropdown (se estiver aberto)
+        self.dropdown.render_expanded(screen)
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """
@@ -149,8 +145,7 @@ class EvaluatorSelector:
         if not self.visible:
             return
 
-        for button in self.buttons:
-            button.handle_event(event)
+        self.dropdown.handle_event(event)
 
     def update(self, mouse_pos: tuple[int, int]) -> None:
         """
@@ -162,6 +157,4 @@ class EvaluatorSelector:
         if not self.visible:
             return
 
-        # Atualizar estado de hover dos botões
-        for button in self.buttons:
-            button.update(mouse_pos)
+        self.dropdown.update(mouse_pos)

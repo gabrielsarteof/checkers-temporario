@@ -23,12 +23,6 @@ from core.evaluation.base_evaluator import BaseEvaluator
 from core.evaluation.piece_count_evaluator import PieceCountEvaluator
 
 # Import dos avaliadores customizados
-try:
-    from evaluators.meninas_superpoderosas_evaluator import AdvancedEvaluator
-    MENINAS_SUPERPODEROSAS_AVAILABLE = True
-except ImportError:
-    MENINAS_SUPERPODEROSAS_AVAILABLE = False
-    print("[AVISO] Meninas Superpoderosas evaluator não disponível")
     
 try:
     from evaluators.sarte_evaluator import AdvancedEvaluatorSarte
@@ -36,12 +30,19 @@ try:
 except ImportError:
     SARTE_AVAILABLE = False
     print("[AVISO] Sarte evaluator não disponível")
-    
+
 try:
-    from evaluators.openingbook_evaluator import MeninasSuperPoderosasEvaluator
+    from evaluators.meninas_superpoderosas_evaluator import MeninasSuperPoderosasEvaluator
+    MENINAS_SUPERPODEROSAS_AVAILABLE = True
+except ImportError:
+    MENINAS_SUPERPODEROSAS_AVAILABLE  = False
+    print("[AVISO] Meninas Super Poderosas evaluator não disponível")
+
+try:
+    from evaluators.openingbook_evaluator import OpeningBookEvaluator
     OPENINGBOOK_AVAILABLE = True
 except ImportError:
-    OPENINGBOOK_AVAILABLE = False
+    OPENINGBOOK_AVAILABLE  = False
     print("[AVISO] Opening Book evaluator não disponível")
 
 
@@ -55,11 +56,11 @@ EVALUATOR_REGISTRY: Dict[str, Type[BaseEvaluator]] = {
 
 # Adicionar avaliadores customizados se disponíveis
 if MENINAS_SUPERPODEROSAS_AVAILABLE:
-    EVALUATOR_REGISTRY["Meninas Superpoderosas"] = AdvancedEvaluator
+    EVALUATOR_REGISTRY["Meninas Superpoderosas"] = MeninasSuperPoderosasEvaluator
 if SARTE_AVAILABLE:
     EVALUATOR_REGISTRY["Sarte"] = AdvancedEvaluatorSarte
 if OPENINGBOOK_AVAILABLE:
-    EVALUATOR_REGISTRY["Opening Book"] = MeninasSuperPoderosasEvaluator
+    EVALUATOR_REGISTRY["Opening Book"] = OpeningBookEvaluator
 
 
 # ============================================================================
