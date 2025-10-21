@@ -312,6 +312,11 @@ class EndgameKnowledge:
         om = composition['opp_men']
         total = composition['total_pieces']
 
+        # IMPORTANTE: Se temos rainha(s) e oponente tem poucas peças (<=2),
+        # retornar None para permitir avaliação normal que incentiva capturas
+        if pk >= 1 and (ok + om) <= 2:
+            return None  # Deixar avaliação normal incentivar capturas
+
         # Apenas damas, números iguais = DRAW provável
         if pm == 0 and om == 0 and pk == ok:
             return self.THEORETICAL_DRAW * 0.8
@@ -2519,6 +2524,11 @@ class MeninasSuperPoderosasEvaluator(BaseEvaluator):
         """
         score = 0.0
 
+        # Detectar fase do jogo
+        phase = self.detect_phase(board)
+        # Em endgame, dar MUITO mais valor à promoção
+        endgame_multiplier = 1.0 + (phase * 3.0)  # 1x no opening, até 4x no endgame
+
         promotion_row = 0 if color == PlayerColor.RED else 7
 
         # Avaliar peças do jogador
@@ -2528,15 +2538,15 @@ class MeninasSuperPoderosasEvaluator(BaseEvaluator):
 
             distance = abs(piece.position.row - promotion_row)
 
-            # Bonus por proximidade
+            # Bonus por proximidade (MUITO aumentado no endgame)
             if distance == 1:
-                score += self.PROMOTION_1_SQUARE
+                score += self.PROMOTION_1_SQUARE * endgame_multiplier
             elif distance == 2:
-                score += self.PROMOTION_2_SQUARES
+                score += self.PROMOTION_2_SQUARES * endgame_multiplier
             elif distance == 3:
-                score += self.PROMOTION_3_SQUARES
+                score += self.PROMOTION_3_SQUARES * endgame_multiplier
             elif distance == 4:
-                score += self.PROMOTION_4_SQUARES
+                score += self.PROMOTION_4_SQUARES * endgame_multiplier
 
         # Avaliar peças oponentes
         opp_promotion_row = 7 if color == PlayerColor.RED else 0
@@ -2548,13 +2558,13 @@ class MeninasSuperPoderosasEvaluator(BaseEvaluator):
             distance = abs(piece.position.row - opp_promotion_row)
 
             if distance == 1:
-                score -= self.PROMOTION_1_SQUARE
+                score -= self.PROMOTION_1_SQUARE * endgame_multiplier
             elif distance == 2:
-                score -= self.PROMOTION_2_SQUARES
+                score -= self.PROMOTION_2_SQUARES * endgame_multiplier
             elif distance == 3:
-                score -= self.PROMOTION_3_SQUARES
+                score -= self.PROMOTION_3_SQUARES * endgame_multiplier
             elif distance == 4:
-                score -= self.PROMOTION_4_SQUARES
+                score -= self.PROMOTION_4_SQUARES * endgame_multiplier
 
         return score
 
@@ -5670,27 +5680,36 @@ class MoveOrderer:
         if tt_move and self._moves_equal(move, tt_move):
             return 100_000
 
-        # Priority 2: Captures (MVV-LVA)
+        # Priority 2: Promotion moves (VERY HIGH - almost as good as TT move)
+        # Movimentos que promovem peça para rainha são extremamente valiosos
+        piece = board.get_piece(move.start)
+        if piece and not piece.is_king():
+            # Verificar se o movimento leva à promoção
+            promotion_row = 0 if piece.color == PlayerColor.RED else 7
+            if move.end.row == promotion_row:
+                # PROMOÇÃO! Dar prioridade máxima (quase igual a TT move)
+                return 95_000
+
+        # Priority 3: Captures (MVV-LVA)
         if len(move.captured_positions) > 0:
             mvv_lva = self._calculate_mvv_lva(move, board)
             return 50_000 + mvv_lva
 
-        # Priority 3: Killer moves
+        # Priority 4: Killer moves
         killers = self.killers[depth]
         if killers[0] and self._moves_equal(move, killers[0]):
             return 10_000
         if killers[1] and self._moves_equal(move, killers[1]):
             return 9_000
 
-        # Priority 4: History heuristic
-        attacker = board.get_piece(move.start)
-        if attacker:
-            history_key = (move.start, move.end, attacker.color)
+        # Priority 5: History heuristic
+        if piece:
+            history_key = (move.start, move.end, piece.color)
             history_score = min(self.history[history_key], 8999)
             if history_score > 0:
                 return history_score
 
-        # Priority 5: Normal moves (PST-based)
+        # Priority 6: Normal moves (PST-based)
         pst_score = self._pst_move_score(move, board)
         return pst_score
 
